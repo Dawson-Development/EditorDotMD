@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+	<link rel="stylesheet" href="./editormd150/lib/codemirror/codemirror.min.css" />
+    <link rel="stylesheet" href="./editormd150/css/editormd.css" />
+    <title>EditorMD</title>
+  </head>
+  <body>
+    <div id="editor" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"></div>
+  </body>
+	<script src="./editormd150/examples/js/jquery.min.js"></script>
+	<script src="./editormd150/editormd.js"></script>
+	<script src="./editormd150/languages/en.js"></script>
+	<script type="text/javascript">
+		var editorMD;
+
+        function dropHandler(ev) {
+            // Prevent default behavior (Prevent file from being opened)
+            ev.preventDefault();
+
+            if (ev.dataTransfer.items) {
+                // Use DataTransferItemList interface to access the file(s)
+                for (let i = 0; i < ev.dataTransfer.items.length; i++) {
+                    // If dropped items aren't files, reject them
+                    if (ev.dataTransfer.items[i].kind === 'file') {
+                        if(getExtension(ev.dataTransfer.items[i].name).toLowerCase() == "md"){
+                            editorMD.setValue(fs.ReadFile(ev.dataTransfer.items[i].name));
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        function dragOverHandler(ev) {
+            // Prevent default behavior (Prevent file from being opened)
+            ev.preventDefault();
+        }
+
+        function getExtension(path) {
+            let baseName = path.toString().split(/[\\/]/).pop(), // extracts file name from full path
+                // (supports separators `\\` and `/`)
+                pos = baseName.lastIndexOf("."); // gets the last position of `.`
+            if (baseName === "" || pos < 1) // if the file name is empty or ...
+                return ""; // the dot not found (-1) or comes first (0)
+            return baseName.slice(pos + 1); // extracts extension ignoring "."
+        }
+
+        function saveFileElectron(){
+            editorMD.createDialog({
+                title: 'Select the File Path to save',
+                // defaultPath: path.join(__dirname, '../assets/'),
+                buttonLabel: 'Save',
+                // Restricting the user to only Text Files.
+                filters: [
+                    {
+                        name: 'MarkDown Document',
+                        extensions: ['md', 'mkd', 'mkdn']
+                    }, ],
+                properties: []
+            }).then(file => {
+                // Stating whether dialog operation was cancelled or not.
+                if (!file.canceled) {
+                    // Creating and Writing to the sample.txt file
+                    fs.writeFile(file.filePath.toString(), 
+                                    editorMD.getValue(), 
+                                    function (err) {
+                                        if (err) throw err;
+                    });
+                }
+            }).catch(err => {
+                console.log(err)
+            });
+        }
+
+        $(function() {
+            editorMD = editormd("editor", 
+            {
+                placeholder : "Mark me down G",
+                width  : "100%",
+                height : window.innerHeight - 23,
+                path   : "./editormd150/lib/",
+                autoHeight : false,
+                dialogShowMask : false,
+                onresize : function() {
+                    height = window.innerHeight - 23;
+                },
+                toolbarIcons : function() {
+                    return [
+                        "undo", "redo", "|", 
+                        "bold", "del", "italic", "quote", "ucwords", "uppercase", "lowercase", "|", 
+                        "h1", "h2", "h3", "h4", "h5", "h6", "|", 
+                        "list-ul", "list-ol", "hr", "|",
+                        "link", "reference-link", "code", "preformatted-text", "code-block", "table", "datetime", "html-entities", "pagebreak", "|",
+                        "goto-line", "watch", "preview", "search", "||", "save"
+                    ];
+                },
+                toolbarIconsClass : {
+                    save : "fa-save"
+                },
+                toolbarIconTexts : {
+                    save : "Save Markdown"
+                },
+                toolbarHandlers : {
+                    save : function() {
+                        var savediag = editorMD.createDialog({
+                            name : "save",
+                            height : 170,
+                            title : "Save Markdown?",
+                            content : "Would you like to save the markdown?</br></br>",
+                            footer : true,
+                            mask : false,
+                            lockScreen : false,
+                            buttons : {
+                                save : ["Yes", function(){ 
+                                    savediag.hide();
+                                    saveFileElectron();
+                                }],
+                                cancel : ["No", function(){ console.log("Cancel"); savediag.hide(); }]
+                            }
+                        });
+                        savediag.show();
+                    },
+                },
+            });
+        });
+	</script>
+</html>
